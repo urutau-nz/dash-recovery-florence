@@ -75,7 +75,7 @@ def build_graph_title(title):
     return html.P(className="graph-title", children=title)
 
 
-def generate_ecdf_plot(amenity_select):
+def generate_ecdf_plot(amenity_select, x_range=None):
     """
     :param amenity_select: the amenity of interest.
     :return: Figure object
@@ -99,26 +99,30 @@ def generate_ecdf_plot(amenity_select):
 		plot_bgcolor = 'rgba(0,0,0,0)',
 
     )
-
+    dff = df_ecdf[df_ecdf.amenity==amenity]
+    dff = dff[dff.distance < dff.distance.quantile(.9998)]
+    if x_range:
+        # get the indices of the values within the specified range
+        idx = dff.index[dff.distance.between(x_range[0],x_range[1], inclusive=True)].tolist()
+    else:
+        idx = dff.index.tolist()
 
     data = []
-    for amenity in [amenity_select]:
-        dff = df_ecdf[df_ecdf.amenity==amenity]
-        dff = dff[dff.distance < dff.distance.quantile(.9998)]
-        # add the cdf for that amenity
-        new_trace = dict(
-            x=dff.distance,
-            y=dff.perc,
-            text=dff.amenity,
-            mode= 'markers',
-            marker_opacity=0.7,
-            marker_size=1,
-            hovermode='closest',
-            hovertemplate = "%{y:.2f}% of residents live within %{x:.1f}km of a %{text} <br>" + "<extra></extra>",
-            hoverlabel = dict(font_size=20),
-            line=dict(shape="spline", color=colormap[amenity]),
-        )
-        data.append(new_trace)
+    # add the cdf for that amenity
+    new_trace = dict(
+        x=dff.distance,
+        y=dff.perc,
+        text=dff.amenity,
+        mode= 'markers',
+        marker_opacity=0.7,
+        marker_size=1,
+        hovermode='closest',
+        hovertemplate = "%{y:.2f}% of residents live within %{x:.1f}km of a %{text} <br>" + "<extra></extra>",
+        hoverlabel = dict(font_size=20),
+        line=dict(shape="spline", color=colormap[amenity]),
+        selectedpoints=idx,
+    )
+    data.append(new_trace)
     return {"data": data, "layout": layout}
 
 
@@ -161,6 +165,8 @@ def generate_map(amenity, dff_dest, x_range=None):
     if x_range:
         # get the indices of the values within the specified range
         idx = df_dist.index[df_dist[amenity].between(x_range[0],x_range[1], inclusive=True)].tolist()
+    else:
+        idx = df_dist.index.tolist()
 
     data = []
     # choropleth map showing the distance at the block level
@@ -174,7 +180,7 @@ def generate_map(amenity, dff_dest, x_range=None):
         visible=True,
         hovertemplate="Distance: %{z:.2f}km<br>" +
                         "<extra></extra>",
-        selectedpoints=idx if x_range else df_dist.index.tolist(),
+        selectedpoints=idx,
     ))
 
     # scatterplot of the amenity locations
@@ -323,8 +329,6 @@ def update_map(
     if prop_id == 'ecdf' and prop_type == "selectedData":
         if ecdf_selectedData:
             x_range = ecdf_selectedData['range']['x']
-        else:
-            x_range=None
 
     return generate_map(amenity_select, dff_dest, x_range=x_range)
 
@@ -334,10 +338,28 @@ def update_map(
     Output("ecdf", "figure"),
     [
         Input("amenity-select", "value"),
+        Input("ecdf", "selectedData"),
     ],
 )
-def update_production(amenity_select):
-    return generate_ecdf_plot(amenity_select)
+def update_production(
+    amenity_select, ecdf_selectedData
+    ):
+    x_range = None
+    # Find which one has been triggered
+    ctx = dash.callback_context
+
+    prop_id = ""
+    prop_type = ""
+    if ctx.triggered:
+        splitted = ctx.triggered[0]["prop_id"].split(".")
+        prop_id = splitted[0]
+        prop_type = splitted[1]
+
+    if prop_id == 'ecdf' and prop_type == "selectedData":
+        if ecdf_selectedData:
+            x_range = ecdf_selectedData['range']['x']
+
+    return generate_ecdf_plot(amenity_select, x_range)
 
 
 # Running the server
