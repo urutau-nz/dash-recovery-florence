@@ -248,6 +248,7 @@
 
 #ecdf .legend .traces .legendtoggle {
     display: none;
+    font-weight: 400;
 }
 
 #mapbox-view-selector label, #ternary-layer-select label {
@@ -276,6 +277,7 @@
 
     #ecdf-container {
         margin-bottom: 5rem;
+        font-weight: 400;
     }
 }
 
@@ -346,7 +348,7 @@
 
 @media (max-width: 1400px) {
     #ecdf * {
-        font-size: 0.9rem;
+        font-size: 1.2rem;
     }
 
     #top-row .legendtext {
@@ -373,7 +375,7 @@
     }
 
     #ecdf * {
-        font-size: 1rem;
+        font-size: 1.3rem;
     }
 
     #top-row .legendtext {
@@ -393,7 +395,7 @@
     /*For some reason, at around 700px, a font-size is set to the ternary map text, so !important tag is needed to
     override it*/
     #ecdf * {
-        font-size: 1.1rem !important;
+        font-size: 1.4rem !important;
     }
 
     #top-row .legendtext {

@@ -3,8 +3,10 @@ import os
 
 import pandas as pd
 import numpy as np
+from urllib.request import urlopen
 import json
 import geopandas as gpd
+
 
 import dash
 import dash_core_components as dcc
@@ -31,16 +33,13 @@ app.title = 'Evaluating proximity'
 mapbox_access_token = open(".mapbox_token").read()
 
 # Load data
-blocks_path = './data/block.geojson'
-with open(blocks_path) as response:
-    blocks = json.load(response)
-
 df_dist = pd.read_csv('./data/distance_to_nearest.csv',dtype={"geoid10": str})
 df_dist[amenities] = df_dist[amenities]/1000
 
 destinations = pd.read_csv('./data/destinations.csv')
 
 df_ecdf = pd.read_csv('./data/ecdf.csv')
+
 
 # Assign color to legend
 colors = ['#EA5138','#E4AE36','#1F386B','#507332']
@@ -82,22 +81,34 @@ def generate_ecdf_plot(amenity_select):
     :return: Figure object
     """
     layout = dict(
-        xaxis=dict(title="distance to nearest {} (km)".format(amenity_select)),
-        yaxis=dict(title="% of residents"),
+        xaxis=dict(
+            title="distance to nearest {} (km)".format(amenity_select).upper(),
+            # title_font=dict(font_size=30),
+            # tickfont=dict(font_size=14)
+            # tickfont=dict(color="white")
+            ),
+        yaxis=dict(
+            title="% of residents".upper(),
+            # size=30
+            # tickfont=dict(color="white")
+            ),
+        font=dict(size=13),
         dragmode="select",
         clickmode="select",
+        paper_bgcolor = 'rgba(255,255,255,1)',
+		plot_bgcolor = 'rgba(0,0,0,0)',
+
     )
 
 
     data = []
     for amenity in [amenity_select]:
         dff = df_ecdf[df_ecdf.amenity==amenity]
+        dff = dff[dff.distance < dff.distance.quantile(.9998)]
         # add the cdf for that amenity
         new_trace = dict(
             x=dff.distance,
             y=dff.perc,
-            maxdisplayed=6,
-            opacity = 1,#1 if amenity == amenity_select else 0.5,
             text=dff.amenity,
             mode= 'markers',
             marker_opacity=0.7,
@@ -154,7 +165,7 @@ def generate_map(amenity, dff_dest, x_range=None):
     data = []
     # choropleth map showing the distance at the block level
     data.append(go.Choroplethmapbox(
-        geojson = blocks,
+        geojson = 'https://raw.githubusercontent.com/urutau-nz/dash-evaluating-proximity/master/data/block.geojson',
         locations = df_dist['geoid10'].tolist(),
         z = df_dist[amenity].tolist(),
         colorscale = pl_deep,
@@ -245,7 +256,7 @@ app.layout = html.Div(
                             id="ecdf-container",
                             className="six columns",
                             children=[
-                                build_graph_title("How fair is people's access?"),
+                                build_graph_title("How fair is people's access and who has the worst?"),
                                 dcc.Graph(id="ecdf",
                                     figure={
                                         "layout": {
@@ -273,8 +284,9 @@ app.layout = html.Div(
                     id="footer-text",
                     children=dcc.Markdown('''
                         Thank you to the developers of [Dash and Plotly]
-                        (https://plotly.com/dash/), who made this app possible.'''
-                    )
+                        (https://plotly.com/dash/), whose work made this app possible.
+                        '''
+                    ),
                 )
             ]
         )
