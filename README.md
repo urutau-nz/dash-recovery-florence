@@ -53,3 +53,7 @@ And on the local computer:
 ssh -N -f -L localhost:8050:localhost:8050 user@remote-address
 ```
 Then open http://127.0.0.1:8050/ in your browser.
+
+## How to publish the app
+
+`pm2 start app.py --name evaluate-proximity --interpreter ./venv/bin/python`

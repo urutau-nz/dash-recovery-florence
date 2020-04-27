@@ -68,7 +68,9 @@ def build_banner():
         id="banner",
         className="banner",
         children=[
-            html.Img(src=app.get_asset_url("urutau-logo.png")),
+            html.A([
+                html.Img(src=app.get_asset_url("urutau-logo.png")),
+            ], href='https://apps.urutau.co.nz'),
             html.H6("Proximity to urban amenities"),
         ],
     )
@@ -387,5 +389,5 @@ def update_ecdf(
 
 # Running the server
 if __name__ == "__main__":
-    # app.run_server(debug=True, port=8051)
-    app.run_server(port=8051)
+    app.run_server(debug=True, port=8050)
+    # app.run_server(port=8051)
