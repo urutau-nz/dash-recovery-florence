@@ -27,9 +27,12 @@ app = dash.Dash(
         {"name": "viewport", "content": "width=device-width, initial-scale=1.0"}
     ],
     external_stylesheets=external_stylesheets,
+    url_base_pathname='/recovery-florence/',
 )
 server = app.server
 app.config["suppress_callback_exceptions"] = True
+app.css.config.serve_locally = True
+app.scripts.config.serve_locally = True
 
 app.title = 'Hurricane recovery'
 
@@ -344,7 +347,7 @@ app.layout = html.Div(
                                     function. It's not just the infrastructure, but the services, amenities, and
                                     opportunities that that enables: health care, groceries, education, employment,
                                     etc. In [Logan et. al (2020)]() we propose a new way to think about making our
-                                    communities resilient. <br />
+                                    communities resilient.  \n
                                     This is an example where we evaluate how access to supermarkets and service stations
                                     changed over the course of a hurricane. This is based on Hurricane Florence,
                                     which hit Wilmington, NC, in 2018.
@@ -580,5 +583,5 @@ def update_recovery(
 
 # Running the server
 if __name__ == "__main__":
-    # app.run_server(debug=True, port=8050)
+#    app.run_server(debug=True, port=9002)
     app.run_server(port=9005)
