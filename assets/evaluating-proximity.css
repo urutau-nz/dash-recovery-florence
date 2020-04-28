@@ -246,10 +246,11 @@
     display: none;
 }
 
-#ecdf .legend .traces .legendtoggle {
+#ecdf .legend .traces .legendtoggle, #recovery .legend .traces .legendtoggle {
     display: none;
     font-weight: 400;
 }
+
 
 #mapbox-view-selector label, #ternary-layer-select label {
     color: white;
@@ -309,7 +310,7 @@
 }
 
 @media (min-width: 1551px) {
-    #ecdf * {
+    #ecdf *, #recovery * {
         font-size: 1rem;
     }
 
@@ -328,7 +329,7 @@
 }
 
 @media (max-width: 1550px) {
-    #ecdf * {
+    #ecdf *, #recovery * {
         font-size: 0.85rem;
     }
 
@@ -347,7 +348,7 @@
 }
 
 @media (max-width: 1400px) {
-    #ecdf * {
+    #ecdf *, #recovery * {
         font-size: 1.2rem;
     }
 
@@ -370,11 +371,11 @@
         padding: 0 4vw;
     }
 
-    #ecdf {
-        margin-left: -6.5rem;
+    #ecdf, #recovery {
+        /* margin-left: -6.5rem; */
     }
 
-    #ecdf * {
+    #ecdf *, #recovery * {
         font-size: 1.3rem;
     }
 
@@ -394,7 +395,7 @@
 @media (max-width: 750px) {
     /*For some reason, at around 700px, a font-size is set to the ternary map text, so !important tag is needed to
     override it*/
-    #ecdf * {
+    #ecdf *, #recovery * {
         font-size: 1.4rem !important;
     }
 
@@ -430,13 +431,13 @@
         z-index: 3;
     }
 
-    #ecdf {
+    #ecdf, #recovery {
         position: relative;
-        margin: -3rem 0 0 -6.5rem;
+        /* margin: -1rem 0 0 -6.5rem; */
         z-index: 1;
     }
 
-    #ecdf * {
+    #ecdf *, #recovery * {
         font-size: 1.8vw !important;
     }
 
@@ -454,7 +455,7 @@
 }
 
 @media (max-width: 400px) {
-    #ecdf * {
+    #ecdf *, #recovery * {
         font-size: 2vw !important;
     }
 
@@ -469,7 +470,7 @@
         margin-top: -5rem;
     }
 
-    #ecdf {
+    #ecdf, #recovery {
         margin: -7rem 0 0 -6.5rem;
     }
 
@@ -480,13 +481,13 @@
 
 @media (max-width: 350px) {
     #map{
-        height: 35rem;
+        height: 40rem;
     }
     #bottom-row {
         margin-top: -8rem;
     }
 
-    #ecdf {
+    #ecdf, #recovery {
         margin: -9rem 0 0 -6.5rem;
     }
 }

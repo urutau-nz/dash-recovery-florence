@@ -6,6 +6,7 @@ import numpy as np
 from urllib.request import urlopen
 import json
 import geopandas as gpd
+import datetime
 
 
 import dash
@@ -14,8 +15,8 @@ import dash_html_components as html
 import plotly.graph_objs as go
 from dash.dependencies import Input, Output, State
 
-amenities = ['hospital','supermarket','school','library']
-amenity_names = {'hospital':'Hospitals','school':'Schools','supermarket':'Supermarkets','library':'Libraries'}
+amenities = ['supermarket','gas_station']
+amenity_names = {'supermarket':'Supermarket','gas_station':'Service Station'}
 
 # app initialize
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -30,19 +31,22 @@ app = dash.Dash(
 server = app.server
 app.config["suppress_callback_exceptions"] = True
 
-app.title = 'Evaluating proximity'
+app.title = 'Hurricane recovery'
 
 # mapbox token
 mapbox_access_token = open(".mapbox_token").read()
 
 # Load data
 df_dist = pd.read_csv('./data/distance_to_nearest.csv',dtype={"geoid10": str})
-df_dist[amenities] = df_dist[amenities]/1000
+df_dist['distance'] = df_dist['distance']/1000
+df_dist['distance'] = df_dist['distance'].replace(np.inf, 999)
 
 destinations = pd.read_csv('./data/destinations.csv')
 
-df_ecdf = pd.read_csv('./data/ecdf.csv')
+df_recovery = pd.read_csv('./data/recovery.csv')
 
+# days since land landfall
+days = np.unique(df_recovery['day'])
 
 # Assign color to legend
 colors = ['#EA5138','#E4AE36','#1F386B','#507332']
@@ -71,7 +75,7 @@ def build_banner():
             html.A([
                 html.Img(src=app.get_asset_url("urutau-logo.png")),
             ], href='https://apps.urutau.co.nz'),
-            html.H6("Proximity to urban amenities"),
+            html.H6("Community resilience"),
         ],
     )
 
@@ -88,7 +92,89 @@ def brush(trace, points, state):
                                       # we have 0 at the position of unselected
                                       # points and 1 in the position of selected points
 
-def generate_ecdf_plot(amenity_select, x_range=None):
+def generate_ecdf_plot(amenity_select, dff_dist, x_range=None):
+    """
+    :param amenity_select: the amenity of interest.
+    :return: Figure object
+    """
+    amenity = amenity_select
+    if x_range is None:
+        x_range = [dff_dist.distance.min(), dff_dist.distance.max()]
+
+
+    layout = dict(
+        xaxis=dict(
+            title="distance to nearest {} (km)".format(amenity_names[amenity]).upper(),
+            range=(0,15),
+            ),
+        yaxis=dict(
+            title="% of residents".upper(),
+            range=(0,100),
+            ),
+        font=dict(size=13),
+        dragmode="select",
+        paper_bgcolor = 'rgba(255,255,255,1)',
+		plot_bgcolor = 'rgba(0,0,0,0)',
+        bargap=0.05,
+        showlegend=False,
+        margin={'t': 10},
+        height= 300
+
+    )
+    data = []
+    # add the cdf for that amenity
+    counts, bin_edges = np.histogram(dff_dist.distance, bins=100, density = True)#, weights=df.W.values)
+    dx = bin_edges[1] - bin_edges[0]
+    new_trace = go.Scattergl(
+            x=bin_edges, y=np.cumsum(counts)*dx*100,
+            opacity=1,
+            line=dict(color=colormap[amenity],),
+            text=amenity_names[amenity]*len(dff_dist.service),
+            hovertemplate = "%{y:.2f}% of residents live within %{x:.1f}km of a %{text} <br>" + "<extra></extra>",
+            hoverlabel = dict(font_size=20),
+            )
+
+    data.append(new_trace)
+
+    # histogram
+    multiplier = 300 if amenity=='supermarket' else 150
+    counts, bin_edges = np.histogram(dff_dist.distance, bins=25, density=True)#, weights=df.W.values)
+    opacity = []
+    for i in bin_edges:
+        if i >= x_range[0] and i <= x_range[1]:
+            opacity.append(0.6)
+        else:
+            opacity.append(0.1)
+    new_trace = go.Bar(
+            x=bin_edges, y=counts*multiplier,
+            marker_opacity=opacity,
+            marker_color=colormap[amenity],
+            hoverinfo="skip", hovertemplate="",)
+    data.append(new_trace)
+
+
+    # add the cdf for that amenity
+    dff_dist = df_dist[(df_dist.day==days[0]) & (df_dist.service==amenity)]
+    counts, bin_edges = np.histogram(dff_dist.distance, bins=100, density = True)#, weights=df.W.values)
+    dx = bin_edges[1] - bin_edges[0]
+    new_trace = go.Scattergl(
+            x=bin_edges, y=np.cumsum(counts)*dx*100,
+            opacity=0.5,
+            line=dict(color=colormap[amenity]),
+            text=[amenity_names[amenity].lower()]*len(dff_dist),
+            # hovertemplate = "%{y:.2f}% of residents live within %{x:.1f}km of a %{text} <br>" + "<extra></extra>",
+            # hoverlabel = dict(font_size=20),
+            hoverinfo="skip", hovertemplate="",
+            )
+
+    data.append(new_trace)
+
+
+    return {"data": data, "layout": layout}
+
+
+
+def recovery_plot(amenity_select, dff_recovery, day):
     """
     :param amenity_select: the amenity of interest.
     :return: Figure object
@@ -97,55 +183,72 @@ def generate_ecdf_plot(amenity_select, x_range=None):
 
     layout = dict(
         xaxis=dict(
-            title="distance to nearest {} (km)".format(amenity_select).upper(),
-            # title_font=dict(font_size=30),
-            # tickfont=dict(font_size=14)
-            # tickfont=dict(color="white")
+            title="days since hurricane landfall".upper(),
+            zeroline=False,
             ),
         yaxis=dict(
-            title="% of residents".upper(),
-            # size=30
-            # tickfont=dict(color="white")
+            title="Distance (km)".format(amenity_names[amenity]).upper(),
+            autorange='reversed',
+            zeroline=False,
+            # range=(10,0),
             ),
         font=dict(size=13),
-        dragmode="select",
-        clickmode="event+select",
         paper_bgcolor = 'rgba(255,255,255,1)',
 		plot_bgcolor = 'rgba(0,0,0,0)',
+        showlegend=False,
+        margin={'t': 10},
+        height= 300
 
     )
-    dff = df_ecdf[df_ecdf.amenity==amenity]
-    dff = dff[dff.distance < dff.distance.quantile(.9998)]
 
     data = []
-    # add the cdf for that amenity
-    new_trace = dict(
-        x=dff.distance,
-        y=dff.perc,
-        text=dff.amenity,
-        mode= 'markers',
-        marker_opacity=0.7,
-        marker_size=1,
-        hovermode='closest',
-        marker=dict(color=[colormap[amenity]]*len(dff)),
-        hovertemplate = "%{y:.2f}% of residents live within %{x:.1f}km of a %{text} <br>" + "<extra></extra>",
-        hoverlabel = dict(font_size=20),
-        # line=dict(shape="spline", color=colormap[amenity]),
-        # selectedpoints=idx,
-    )
+    # add the average
+    new_trace = go.Scattergl(
+            x=dff_recovery.day, y=dff_recovery['average']/1000,
+            opacity=1,
+            line=dict(color=colormap[amenity],),
+            text=[amenity_names[amenity].lower()]*len(dff_recovery),
+            hovertemplate = "The average distance to the nearest %{text} was %{y:.1f}km<br>" + "<extra></extra>",
+            hoverlabel = dict(font_size=20),
+            )
+    data.append(new_trace)
+    # add the percentiles
+    new_trace = go.Scattergl(
+            x=dff_recovery.day, y=dff_recovery['p5']/1000,
+            opacity=.50,
+            line=dict(color=colormap[amenity],dash='dash'),
+            text=dff_recovery.service,
+            hovertemplate = "5th % = %{y:.1f}km<br>" + "<extra></extra>",
+            hoverlabel = dict(font_size=20),
+            )
+    data.append(new_trace)
+    # add the percentiles
+    new_trace = go.Scattergl(
+            x=dff_recovery.day, y=dff_recovery['p95']/1000,
+            opacity=.50,
+            line=dict(color=colormap[amenity],dash='dash'),
+            text=dff_recovery.service,
+            hovertemplate = "95th % = %{y:.1f}km<br>" + "<extra></extra>",
+            hoverlabel = dict(font_size=20),
+            )
     data.append(new_trace)
 
-    # update color for selection
-    if x_range:
-        # get the indices of the values within the specified range
-        idx = np.where(dff.distance.between(x_range[0],x_range[1], inclusive=True))[0]
-        for i in idx:
-            data[0]['marker']['color'][i] = 'black'
+    # add the percentiles
+    new_trace = go.Scattergl(
+            x=[day, day],
+            y=[0,20],
+            opacity=.50,
+            mode='lines',
+            line=dict(color='black',dash='dash'),
+            hoverinfo="skip", hovertemplate="",
+            )
+    data.append(new_trace)
 
     return {"data": data, "layout": layout}
 
 
-def generate_map(amenity, dff_dest, x_range=None):
+
+def generate_map(amenity, dff_dist, dff_dest, x_range=None):
     """
     Generate map showing the distance to services and the locations of them
 
@@ -154,19 +257,22 @@ def generate_map(amenity, dff_dest, x_range=None):
     :param x_range: distance range to highlight.
     :return: Plotly figure object.
     """
+    # print(dff_dist['geoid10'].tolist())
+    dff_dist = dff_dist.reset_index()
+
 
     layout = go.Layout(
         clickmode="none",
         dragmode="zoom",
-
         showlegend=True,
         autosize=True,
         hovermode="closest",
         margin=dict(l=0, r=0, t=0, b=0),
+        height= 561,
         mapbox=go.layout.Mapbox(
             accesstoken=mapbox_access_token,
             bearing=0,
-            center=go.layout.mapbox.Center(lat = 39.292126, lon = -76.613632),
+            center=go.layout.mapbox.Center(lat = 34.245580, lon = -77.872072),
             pitch=0,
             zoom=10.5,
             style="basic", #"dark", #
@@ -183,16 +289,16 @@ def generate_map(amenity, dff_dest, x_range=None):
 
     if x_range:
         # get the indices of the values within the specified range
-        idx = df_dist.index[df_dist[amenity].between(x_range[0],x_range[1], inclusive=True)].tolist()
+        idx = dff_dist.index[dff_dist['distance'].between(x_range[0],x_range[1], inclusive=True)].tolist()
     else:
-        idx = df_dist.index.tolist()
+        idx = dff_dist.index.tolist()
 
     data = []
     # choropleth map showing the distance at the block level
     data.append(go.Choroplethmapbox(
-        geojson = 'https://raw.githubusercontent.com/urutau-nz/dash-evaluating-proximity/master/data/block.geojson',
-        locations = df_dist['geoid10'].tolist(),
-        z = df_dist[amenity].tolist(),
+        geojson = 'https://raw.githubusercontent.com/urutau-nz/dash-recovery-florence/master/data/block.geojson',
+        locations = dff_dist['geoid10'].tolist(),
+        z = dff_dist['distance'].tolist(),
         colorscale = pl_deep,
         colorbar = dict(thickness=20, ticklen=3), zmin=0, zmax=5,
         marker_line_width=0, marker_opacity=0.7,
@@ -203,11 +309,14 @@ def generate_map(amenity, dff_dest, x_range=None):
     ))
 
     # scatterplot of the amenity locations
+    point_color = [colormap[amenity] if i==True else 'black' for i in dff_dest['operational']]
+
     data.append(go.Scattermapbox(
         lat=dff_dest["lat"],
         lon=dff_dest["lon"],
         mode="markers",
-        marker={"color": colormap[amenity], "size": 9},
+        marker={"color": point_color, "size": 9},
+        # marker={"color": dff_dest['operational'], "size": 9},
         name=amenity_names[amenity],
         hoverinfo="skip", hovertemplate="",
     ))
@@ -231,13 +340,14 @@ app.layout = html.Div(
                                 html.P(
                                     id="instructions",
                                     children=dcc.Markdown('''
-                                    Access, and equitable access, to urban amenities is essential
-                                    for community cohesion and resilience. Explore access to several amenities
-                                    in Baltimore, MD. Zoom into the areas and discover the distance the residents
-                                    have to travel to get to these day-to-day facilities. Select a range on the
-                                    graph to highlight the areas with that distance on the map. Where should
-                                    more amenities be provided?
-                                    Work based on [Logan et. al (2019).](http://journals.sagepub.com/doi/10.1177/2399808317736528)
+                                    To make communities resilient, we need to think about what they require to
+                                    function. It's not just the infrastructure, but the services, amenities, and
+                                    opportunities that that enables: health care, groceries, education, employment,
+                                    etc. In [Logan et. al (2020)]() we propose a new way to think about making our
+                                    communities resilient. <br />
+                                    This is an example where we evaluate how access to supermarkets and service stations
+                                    changed over the course of a hurricane. This is based on Hurricane Florence,
+                                    which hit Wilmington, NC, in 2018.
                                     '''),
                                 ),
                                 build_graph_title("Select Amenity"),
@@ -253,6 +363,18 @@ app.layout = html.Div(
                         )
                     ],
                 ),
+                # html.Div(
+                #     className="row",
+                #     # id="top-row-graphs",
+                #     children=[
+                #         # Access map
+                #         html.Div(
+                #             children=[
+                #
+                #             ],
+                #         ),
+                #     ],
+                # ),
                 html.Div(
                     className="row",
                     id="top-row-graphs",
@@ -261,7 +383,16 @@ app.layout = html.Div(
                         html.Div(
                             id="map-container",
                             children=[
-                                build_graph_title("Explore how far people need to travel"),
+                                build_graph_title("Select the day since landfall"),
+                                dcc.Slider(
+                                    id="day-select",
+                                    min=np.min(days),
+                                    max=np.max(days),
+                                    # step=2,
+                                    marks={i: str(i) for i in range(np.min(days),np.max(days),1)},
+                                    value=-2,
+                                ),
+                                build_graph_title("How has people's access to essential services changed?"),
                                 dcc.Graph(
                                     id="map",
                                     figure={
@@ -274,6 +405,13 @@ app.layout = html.Div(
                                             "modeBarButtonsToRemove":["lasso2d","select2d"],
                                     },
                                 ),
+                                # build_graph_title("Select the day since landfall"),
+                                # dcc.Slider(
+                                #     min=0,
+                                #     max=9,
+                                #     marks={i: 'Label {}'.format(i) if i == 1 else str(i) for i in range(1, 6)},
+                                #     value=5,
+                                # ),
                             ],
                         ),
                         # ECDF
@@ -281,15 +419,41 @@ app.layout = html.Div(
                             id="ecdf-container",
                             className="six columns",
                             children=[
-                                build_graph_title("Select to identify areas by their distance"),
+                                build_graph_title("Select a distance range to identify those areas"),
                                 dcc.Graph(id="ecdf",
                                     figure={
                                         "layout": {
-                                            'clickmode': 'event+select',
+                                            # 'clickmode': 'event+select',
                                             "paper_bgcolor": "#192444",
                                             "plot_bgcolor": "#192444",
                                             'mode': 'markers+lines',
-
+                                            'margin': {
+                                                'l': 0,
+                                                'r': 0,
+                                                'b': 0,
+                                                't': 0,
+                                                'pad': 0
+                                              }
+                                        }
+                                    },
+                                    config={"scrollZoom": True, "displayModeBar": True,
+                                            "modeBarButtonsToRemove":['toggleSpikelines','hoverCompareCartesian'],
+                                    },
+                                ),
+                                build_graph_title("Resilience curve"),
+                                dcc.Graph(id="recovery",
+                                    figure={
+                                        "layout": {
+                                            # 'clickmode': 'event+select',
+                                            "paper_bgcolor": "#192444",
+                                            "plot_bgcolor": "#192444",
+                                            # 'mode': 'markers+lines',
+                                            'shapes':{
+                                                'type':'line',
+                                                'y0': 20, 'y1': 0,
+                                                # 'xref': 'x0',
+                                                'x0': 5, 'x1': 5,
+                                            }
                                         }
                                     },
                                     config={"scrollZoom": True, "displayModeBar": True,
@@ -324,17 +488,18 @@ app.layout = html.Div(
     Output("map", "figure"),
     [
         Input("amenity-select", "value"),
-        # Input("ecdf", "relayoutData"),
+        Input("day-select", "value"),
         Input("ecdf", "selectedData"),
     ],
 )
 def update_map(
-    amenity_select, ecdf_selectedData
+    amenity_select, day, ecdf_selectedData
 ):
     x_range = None
+    day = int(day)
     # subset the desination df
-    dff_dest = destinations[destinations.dest_type == amenity_select]
-
+    dff_dest = destinations[(destinations.dest_type==amenity_select) & (destinations['day']==day)]
+    dff_dist = df_dist[(df_dist['service']==amenity_select) & (df_dist['day']==day)]
     # Find which one has been triggered
     ctx = dash.callback_context
 
@@ -352,7 +517,7 @@ def update_map(
             else:
                 x_range = [ecdf_selectedData['points'][0]['x']]*2
 
-    return generate_map(amenity_select, dff_dest, x_range=x_range)
+    return generate_map(amenity_select, dff_dist, dff_dest, x_range=x_range)
 
 
 # Update ecdf
@@ -360,13 +525,19 @@ def update_map(
     Output("ecdf", "figure"),
     [
         Input("amenity-select", "value"),
+        Input("day-select", "value"),
         Input("ecdf", "selectedData"),
     ],
 )
 def update_ecdf(
-    amenity_select, ecdf_selectedData
+    amenity_select, day, ecdf_selectedData
     ):
     x_range = None
+    # day = int(day)
+
+    # subset data
+    dff_dist = df_dist[(df_dist['service']==amenity_select) & (df_dist['day']==day)]
+
     # Find which one has been triggered
     ctx = dash.callback_context
 
@@ -384,10 +555,30 @@ def update_ecdf(
             else:
                 x_range = [ecdf_selectedData['points'][0]['x']]*2
 
-    return generate_ecdf_plot(amenity_select, x_range)
+    return generate_ecdf_plot(amenity_select, dff_dist, x_range)
+
+# Update ecdf
+@app.callback(
+    Output("recovery", "figure"),
+    [
+        Input("amenity-select", "value"),
+        Input("day-select", "value"),
+    ],
+)
+def update_recovery(
+    amenity_select, day
+    ):
+    x_range = None
+    day = int(day)
+
+    # subset data
+    dff_recovery = df_recovery[(df_recovery['service']==amenity_select)]
+
+    return recovery_plot(amenity_select, dff_recovery, day)
+
 
 
 # Running the server
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8050)
-    # app.run_server(port=8051)
+    # app.run_server(debug=True, port=8050)
+    app.run_server(port=9005)
