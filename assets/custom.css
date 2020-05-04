@@ -62,6 +62,14 @@
     color: white;
 }
 
+#map {
+    height: 60vh;
+}
+
+#ecdf, #recovery {
+  height: 32vh;
+}
+
 #instructions {
     font-size: 1.5rem;
     font-style: italic;
@@ -284,7 +292,8 @@
 
 @media (min-width: 1001px) {
     #map-container {
-        margin: 0 -2rem 0 4rem;
+        margin: 0 0rem 0 4rem;
+        height: 60vh;
     }
 
     #ternary-header {
