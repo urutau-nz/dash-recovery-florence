@@ -351,7 +351,7 @@ app.layout = html.Div(
                                     To make communities resilient, we need to think about what they require to
                                     function. It's not just the infrastructure, but the services, amenities, and
                                     opportunities that that enables: health care, groceries, education, employment,
-                                    etc. In [Logan et. al (2020)](https://onlinelibrary.wiley.com/doi/full/10.1111/risa.13492) we propose a new way to think about making our
+                                    etc. In [Logan et. al (2020)](https://onlinelibrary.wiley.com/doi/abs/10.1111/risa.13492) we propose a new way to think about making our
                                     communities resilient.  \n
                                     This is an example where we evaluate how access to supermarkets and service stations
                                     changed over the course of a hurricane. This is based on Hurricane Florence,
