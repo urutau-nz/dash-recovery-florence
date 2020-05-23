@@ -27,9 +27,12 @@ app = dash.Dash(
         {"name": "viewport", "content": "width=device-width, initial-scale=1.0"}
     ],
     external_stylesheets=external_stylesheets,
+    url_base_pathname='/resilience-florence/',
 )
 server = app.server
 app.config["suppress_callback_exceptions"] = True
+app.css.config.serve_locally = True
+app.scripts.config.serve_locally = True
 
 app.title = 'Hurricane recovery'
 
@@ -118,7 +121,7 @@ def generate_ecdf_plot(amenity_select, dff_dist, x_range=None):
         bargap=0.05,
         showlegend=False,
         margin={'t': 10},
-        height= 300
+        # height= 300
 
     )
     data = []
@@ -180,6 +183,10 @@ def recovery_plot(amenity_select, dff_recovery, day):
     :return: Figure object
     """
     amenity = amenity_select
+    if amenity == 'supermarket':
+        ylimit = 15
+    else:
+        ylimit = 8
 
     layout = dict(
         xaxis=dict(
@@ -188,16 +195,17 @@ def recovery_plot(amenity_select, dff_recovery, day):
             ),
         yaxis=dict(
             title="Distance (km)".format(amenity_names[amenity]).upper(),
-            autorange='reversed',
+
             zeroline=False,
-            # range=(10,0),
+            range=(ylimit,0),
+            # autorange='reversed',
             ),
         font=dict(size=13),
         paper_bgcolor = 'rgba(255,255,255,1)',
 		plot_bgcolor = 'rgba(0,0,0,0)',
         showlegend=False,
         margin={'t': 10},
-        height= 300
+        # height= 300
 
     )
 
@@ -233,10 +241,10 @@ def recovery_plot(amenity_select, dff_recovery, day):
             )
     data.append(new_trace)
 
-    # add the percentiles
+    # add date line
     new_trace = go.Scattergl(
             x=[day, day],
-            y=[0,20],
+            y=[0,ylimit+2],
             opacity=.50,
             mode='lines',
             line=dict(color='black',dash='dash'),
@@ -268,7 +276,7 @@ def generate_map(amenity, dff_dist, dff_dest, x_range=None):
         autosize=True,
         hovermode="closest",
         margin=dict(l=0, r=0, t=0, b=0),
-        height= 561,
+        # height= 561,
         mapbox=go.layout.Mapbox(
             accesstoken=mapbox_access_token,
             bearing=0,
@@ -343,8 +351,8 @@ app.layout = html.Div(
                                     To make communities resilient, we need to think about what they require to
                                     function. It's not just the infrastructure, but the services, amenities, and
                                     opportunities that that enables: health care, groceries, education, employment,
-                                    etc. In [Logan et. al (2020)]() we propose a new way to think about making our
-                                    communities resilient. <br />
+                                    etc. In [Logan et. al (2020)](https://onlinelibrary.wiley.com/doi/abs/10.1111/risa.13492) we propose a new way to think about making our
+                                    communities resilient.  \n
                                     This is an example where we evaluate how access to supermarkets and service stations
                                     changed over the course of a hurricane. This is based on Hurricane Florence,
                                     which hit Wilmington, NC, in 2018.
@@ -392,7 +400,7 @@ app.layout = html.Div(
                                     marks={i: str(i) for i in range(np.min(days),np.max(days),1)},
                                     value=-2,
                                 ),
-                                build_graph_title("How has people's access to essential services changed?"),
+                                build_graph_title("How has people's access to services changed?"),
                                 dcc.Graph(
                                     id="map",
                                     figure={
@@ -421,41 +429,41 @@ app.layout = html.Div(
                             children=[
                                 build_graph_title("Select a distance range to identify those areas"),
                                 dcc.Graph(id="ecdf",
-                                    figure={
-                                        "layout": {
-                                            # 'clickmode': 'event+select',
-                                            "paper_bgcolor": "#192444",
-                                            "plot_bgcolor": "#192444",
-                                            'mode': 'markers+lines',
-                                            'margin': {
-                                                'l': 0,
-                                                'r': 0,
-                                                'b': 0,
-                                                't': 0,
-                                                'pad': 0
-                                              }
-                                        }
-                                    },
+                                    # figure={
+                                    #     "layout": {
+                                    #         # 'clickmode': 'event+select',
+                                    #         "paper_bgcolor": "#192444",
+                                    #         "plot_bgcolor": "#192444",
+                                    #         'mode': 'markers+lines',
+                                    #         'margin': {
+                                    #             'l': 0,
+                                    #             'r': 0,
+                                    #             'b': 0,
+                                    #             't': 0,
+                                    #             'pad': 0
+                                    #           }
+                                    #     }
+                                    # },
                                     config={"scrollZoom": True, "displayModeBar": True,
                                             "modeBarButtonsToRemove":['toggleSpikelines','hoverCompareCartesian'],
                                     },
                                 ),
                                 build_graph_title("Resilience curve"),
                                 dcc.Graph(id="recovery",
-                                    figure={
-                                        "layout": {
-                                            # 'clickmode': 'event+select',
-                                            "paper_bgcolor": "#192444",
-                                            "plot_bgcolor": "#192444",
-                                            # 'mode': 'markers+lines',
-                                            'shapes':{
-                                                'type':'line',
-                                                'y0': 20, 'y1': 0,
-                                                # 'xref': 'x0',
-                                                'x0': 5, 'x1': 5,
-                                            }
-                                        }
-                                    },
+                                    # figure={
+                                    #     "layout": {
+                                    #         'height': '32vh',
+                                    #         "paper_bgcolor": "#192444",
+                                    #         "plot_bgcolor": "#192444",
+                                    #         # 'mode': 'markers+lines',
+                                    #         'shapes':{
+                                    #             'type':'line',
+                                    #             'y0': 20, 'y1': 0,
+                                    #             # 'xref': 'x0',
+                                    #             'x0': 5, 'x1': 5,
+                                    #         }
+                                    #     }
+                                    # },
                                     config={"scrollZoom": True, "displayModeBar": True,
                                             "modeBarButtonsToRemove":['toggleSpikelines','hoverCompareCartesian'],
                                     },
@@ -581,4 +589,4 @@ def update_recovery(
 # Running the server
 if __name__ == "__main__":
     # app.run_server(debug=True, port=8050)
-    app.run_server(port=9005)
+   app.run_server(port=9005)
