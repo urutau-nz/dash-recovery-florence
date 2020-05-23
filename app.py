@@ -27,7 +27,7 @@ app = dash.Dash(
         {"name": "viewport", "content": "width=device-width, initial-scale=1.0"}
     ],
     external_stylesheets=external_stylesheets,
-    url_base_pathname='/recovery-florence/',
+    url_base_pathname='/resilience-florence/',
 )
 server = app.server
 app.config["suppress_callback_exceptions"] = True
