@@ -69,7 +69,6 @@ pl_deep=[[0.0, 'rgb(253, 253, 204)'],
          [0.9, 'rgb(55, 44, 80)'],
          [1.0, 'rgb(39, 26, 44)']]
 
-
 def build_banner():
     return html.Div(
         id="banner",
@@ -78,7 +77,7 @@ def build_banner():
             html.A([
                 html.Img(src=app.get_asset_url("urutau-logo.png")),
             ], href='https://apps.urutau.co.nz'),
-            html.H6("Community resilience"),
+            html.H6("A new approach to community resilience"),
         ],
     )
 
@@ -94,6 +93,219 @@ def brush(trace, points, state):
         trace.marker.color = selected # now the trace marker color is a list of 0 and 1;
                                       # we have 0 at the position of unselected
                                       # points and 1 in the position of selected points
+
+
+app.layout = html.Div(
+    children=[
+        html.Div(
+            id="top-row",
+            children=[
+                html.Div(
+                    className="row",
+                    id="top-row-header",
+                    children=[
+                        html.Div(
+                            id="header-container",
+                            children=[
+                                build_banner(),
+                                html.P(
+                                    id="instructions",
+                                    children=dcc.Markdown('''
+                                    To make communities resilient, we need to think about what they require to
+                                    function. It's not just the infrastructure, but the services, amenities, and
+                                    opportunities that that enables: health care, groceries, education, employment,
+                                    etc. In [Logan et. al (2020)](https://onlinelibrary.wiley.com/doi/abs/10.1111/risa.13492) we propose a new way to think about making our
+                                    communities resilient.  \n
+                                    This is an example where we evaluate how access to supermarkets and service stations
+                                    changed over the course of a hurricane. This is based on Hurricane Florence,
+                                    which hit Wilmington, NC, in 2018.
+                                    '''),
+                                ),
+                                build_graph_title("Select Amenity"),
+                                dcc.Dropdown(
+                                    id="amenity-select",
+                                    options=[
+                                        {"label": amenity_names[i].upper(), "value": i}
+                                        for i in amenities
+                                    ],
+                                    value=amenities[0],
+                                ),
+                            ],
+                        )
+                    ],
+                ),
+                html.Div(
+                    className="row",
+                    id="top-row-graphs",
+                    children=[
+                        # Access map
+                        html.Div(
+                            id="map-container",
+                            children=[
+                                build_graph_title("Select the day since landfall"),
+                                dcc.Slider(
+                                    id="day-select",
+                                    min=np.min(days),
+                                    max=np.max(days),
+                                    marks={i: str(i) for i in range(np.min(days),np.max(days),1)},
+                                    value=-2,
+                                ),
+                                build_graph_title("How has people's access to services changed?"),
+                                dcc.Graph(
+                                    id="map",
+                                    figure={
+                                        "layout": {
+                                            "paper_bgcolor": "#192444",
+                                            "plot_bgcolor": "#192444",
+                                        }
+                                    },
+                                    config={"scrollZoom": True, "displayModeBar": True,
+                                            "modeBarButtonsToRemove":["lasso2d","select2d"],
+                                    },
+                                ),
+                            ],
+                        ),
+                        # ECDF
+                        html.Div(
+                            id="ecdf-container",
+                            className="six columns",
+                            children=[
+                                build_graph_title("Select a distance range to identify those areas"),
+                                dcc.Graph(id="ecdf",
+                                    config={"scrollZoom": True, "displayModeBar": True,
+                                            "modeBarButtonsToRemove":['toggleSpikelines','hoverCompareCartesian'],
+                                    },
+                                ),
+                                build_graph_title("Resilience curve"),
+                                dcc.Graph(id="recovery",
+                                    config={"scrollZoom": True, "displayModeBar": True,
+                                            "modeBarButtonsToRemove":['toggleSpikelines','hoverCompareCartesian'],
+                                    },
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        html.Div(
+            className="row",
+            id="bottom-row",
+            children=[
+                # Formation bar plots
+                html.Div(
+                    id="form-bar-container",
+                    className="six columns",
+                    children=[
+                        html.H6(
+                            ["Everyday services"], className="subtitle padded"
+                        ),
+                        dcc.Markdown(
+                            ['''
+                        The geography literature tells us that community cohesion, the generation of social
+                        capital, and community sustainability is fostered by access to opportunities
+                        and resources: specifically equitable access to those opportunities (Dempsey, 2011).
+                        These everyday amenities include water, power, sanitation, and communications, but communities also require
+                        access to food, education, and health care (Winter, 1997).
+                        (While access includes dimensions of availability, acceptability, afforability, adequacy, and awareness (Penchasky 1981; Saurman 2016),
+                        we begin by considering proximity.)
+                        '''],
+                        ),
+                        html.H6(
+                            ["Community capacity"], className="subtitle padded"
+                        ),
+                        dcc.Markdown(
+                            ['''
+                        Common to the many definitions of resilience is community capacity to anticipate, prepare, absorb,
+                        adapt, and transform.
+                        To develop these capacities, a community needs cohesion and social capital.
+                        It is therefore necessary to ensure there is equitable access to essential services.
+                        We have seen that communities without access to everyday services will simply collapse (Contreras, 2017).
+                        That is, a community without resources and the trust that arises from equitable opportunities, will struggle
+                        to develop the capacities identified as providing the foundation of resilience.
+                        '''],
+                        ),
+                        html.H6(
+                            ["Functionality"], className="subtitle padded"
+                        ),
+                        dcc.Markdown(
+                            ['''
+                        Resilience in terms of access not only supports the capacity for resilience prior to a disruption,
+                        but supports decision making during a disaster.
+                        At these times the focus of resilience shifts from the lens of capacity to that of functionality and impact.
+                        Understanding how people's access has changed can enable emergency managers to quickly restore
+                        the access that was lost and provide temporary access to those in-need.
+                        '''],
+                        ),
+                    ],
+                ),
+                html.Div(
+                    # Selected well productions
+                    id="well-production-container",
+                    className="six columns",
+                    children=[
+                        html.H6(
+                            ["Outcome-centric"], className="subtitle padded"
+                        ),
+                        dcc.Markdown(
+                            ['''
+                        This thinking of resilience is outcome-based.
+                        Where infrastructure has been the focus because of traditional engineering resilience approaches
+                         (due to its critical importance in supporting everyday services)
+                        we focus on the outcomes for communities.
+                        For instance we can explore interventions that can
+                        improve the resilience of communities, such as decentralization or infrastructure independence (e.g., solar panels or generators).
+                        '''],
+                        ),
+                        html.H6(
+                            ["Spatial dimension"], className="subtitle padded"
+                        ),
+                        html.P(
+                            ["\
+                        Finally, this conceptualization is spatially explicit, \
+                        so resilience-enhancing decisions can be integrated into\
+                        land-use planning and hazard exposure mapping."
+                        ],
+                        ),
+                        html.H6(
+                            ["Applicable throughout the hazard cycle"], className="subtitle padded"
+                        ),
+                        dcc.Markdown(
+                            ['''
+                        Thinking about resilience in this way can be used to support decision-making throughout the hazard cycle.
+                        * Preparation and transformation phases: Improve equitable access to provide the conditions for community capacity to develop
+                        * Emergency and rehabilitation phases: Quickly restore the services that communities need to function.
+                        '''],
+                        ),
+                        html.Div(
+                            [
+                        html.Img(
+                            src='./assets/hazard_cycle.png',
+                            alt='How we can support at each stage of the hazard cycle',
+                            width='70%'
+                        ),
+                        ],
+                        style={"text-align": "center"},
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        html.Div(
+            id="footer-row",
+            children=[
+                html.P(
+                    id="footer-text",
+                    children=dcc.Markdown('''
+                        Thank you to the developers of [Dash and Plotly]
+                        (https://plotly.com/dash/), whose work made this app possible.
+                        '''
+                    ),
+                )
+            ]
+        )
+    ]
+)
 
 def generate_ecdf_plot(amenity_select, dff_dist, x_range=None):
     """
@@ -113,6 +325,7 @@ def generate_ecdf_plot(amenity_select, dff_dist, x_range=None):
         yaxis=dict(
             title="% of residents".upper(),
             range=(0,100),
+            fixedrange=True,
             ),
         font=dict(size=13),
         dragmode="select",
@@ -121,19 +334,19 @@ def generate_ecdf_plot(amenity_select, dff_dist, x_range=None):
         bargap=0.05,
         showlegend=False,
         margin={'t': 10},
-        # height= 300
+        transition = {'duration': 500},
 
     )
     data = []
     # add the cdf for that amenity
     counts, bin_edges = np.histogram(dff_dist.distance, bins=100, density = True)#, weights=df.W.values)
     dx = bin_edges[1] - bin_edges[0]
-    new_trace = go.Scattergl(
+    new_trace = go.Scatter(
             x=bin_edges, y=np.cumsum(counts)*dx*100,
             opacity=1,
             line=dict(color=colormap[amenity],),
             text=amenity_names[amenity]*len(dff_dist.service),
-            hovertemplate = "%{y:.2f}% of residents live within %{x:.1f}km of a %{text} <br>" + "<extra></extra>",
+            hovertemplate = "%{y:.1f}% of residents live within %{x:.1f}km of a %{text} <br>" + "<extra></extra>",
             hoverlabel = dict(font_size=20),
             )
 
@@ -156,17 +369,15 @@ def generate_ecdf_plot(amenity_select, dff_dist, x_range=None):
     data.append(new_trace)
 
 
-    # add the cdf for that amenity
+    # add the cdf for that amenity in baseline conditions
     dff_dist = df_dist[(df_dist.day==days[0]) & (df_dist.service==amenity)]
     counts, bin_edges = np.histogram(dff_dist.distance, bins=100, density = True)#, weights=df.W.values)
     dx = bin_edges[1] - bin_edges[0]
-    new_trace = go.Scattergl(
+    new_trace = go.Scatter(
             x=bin_edges, y=np.cumsum(counts)*dx*100,
             opacity=0.5,
             line=dict(color=colormap[amenity]),
             text=[amenity_names[amenity].lower()]*len(dff_dist),
-            # hovertemplate = "%{y:.2f}% of residents live within %{x:.1f}km of a %{text} <br>" + "<extra></extra>",
-            # hoverlabel = dict(font_size=20),
             hoverinfo="skip", hovertemplate="",
             )
 
@@ -192,10 +403,11 @@ def recovery_plot(amenity_select, dff_recovery, day):
         xaxis=dict(
             title="days since hurricane landfall".upper(),
             zeroline=False,
+            fixedrange=True,
             ),
         yaxis=dict(
             title="Distance (km)".format(amenity_names[amenity]).upper(),
-
+            fixedrange=True,
             zeroline=False,
             range=(ylimit,0),
             # autorange='reversed',
@@ -205,7 +417,7 @@ def recovery_plot(amenity_select, dff_recovery, day):
 		plot_bgcolor = 'rgba(0,0,0,0)',
         showlegend=False,
         margin={'t': 10},
-        # height= 300
+        transition = {'duration': 500},
 
     )
 
@@ -332,164 +544,6 @@ def generate_map(amenity, dff_dist, dff_dest, x_range=None):
     return {"data": data, "layout": layout}
 
 
-app.layout = html.Div(
-    children=[
-        html.Div(
-            id="top-row",
-            children=[
-                html.Div(
-                    className="row",
-                    id="top-row-header",
-                    children=[
-                        html.Div(
-                            id="header-container",
-                            children=[
-                                build_banner(),
-                                html.P(
-                                    id="instructions",
-                                    children=dcc.Markdown('''
-                                    To make communities resilient, we need to think about what they require to
-                                    function. It's not just the infrastructure, but the services, amenities, and
-                                    opportunities that that enables: health care, groceries, education, employment,
-                                    etc. In [Logan et. al (2020)](https://onlinelibrary.wiley.com/doi/abs/10.1111/risa.13492) we propose a new way to think about making our
-                                    communities resilient.  \n
-                                    This is an example where we evaluate how access to supermarkets and service stations
-                                    changed over the course of a hurricane. This is based on Hurricane Florence,
-                                    which hit Wilmington, NC, in 2018.
-                                    '''),
-                                ),
-                                build_graph_title("Select Amenity"),
-                                dcc.Dropdown(
-                                    id="amenity-select",
-                                    options=[
-                                        {"label": amenity_names[i].upper(), "value": i}
-                                        for i in amenities
-                                    ],
-                                    value=amenities[0],
-                                ),
-                            ],
-                        )
-                    ],
-                ),
-                # html.Div(
-                #     className="row",
-                #     # id="top-row-graphs",
-                #     children=[
-                #         # Access map
-                #         html.Div(
-                #             children=[
-                #
-                #             ],
-                #         ),
-                #     ],
-                # ),
-                html.Div(
-                    className="row",
-                    id="top-row-graphs",
-                    children=[
-                        # Access map
-                        html.Div(
-                            id="map-container",
-                            children=[
-                                build_graph_title("Select the day since landfall"),
-                                dcc.Slider(
-                                    id="day-select",
-                                    min=np.min(days),
-                                    max=np.max(days),
-                                    # step=2,
-                                    marks={i: str(i) for i in range(np.min(days),np.max(days),1)},
-                                    value=-2,
-                                ),
-                                build_graph_title("How has people's access to services changed?"),
-                                dcc.Graph(
-                                    id="map",
-                                    figure={
-                                        "layout": {
-                                            "paper_bgcolor": "#192444",
-                                            "plot_bgcolor": "#192444",
-                                        }
-                                    },
-                                    config={"scrollZoom": True, "displayModeBar": True,
-                                            "modeBarButtonsToRemove":["lasso2d","select2d"],
-                                    },
-                                ),
-                                # build_graph_title("Select the day since landfall"),
-                                # dcc.Slider(
-                                #     min=0,
-                                #     max=9,
-                                #     marks={i: 'Label {}'.format(i) if i == 1 else str(i) for i in range(1, 6)},
-                                #     value=5,
-                                # ),
-                            ],
-                        ),
-                        # ECDF
-                        html.Div(
-                            id="ecdf-container",
-                            className="six columns",
-                            children=[
-                                build_graph_title("Select a distance range to identify those areas"),
-                                dcc.Graph(id="ecdf",
-                                    # figure={
-                                    #     "layout": {
-                                    #         # 'clickmode': 'event+select',
-                                    #         "paper_bgcolor": "#192444",
-                                    #         "plot_bgcolor": "#192444",
-                                    #         'mode': 'markers+lines',
-                                    #         'margin': {
-                                    #             'l': 0,
-                                    #             'r': 0,
-                                    #             'b': 0,
-                                    #             't': 0,
-                                    #             'pad': 0
-                                    #           }
-                                    #     }
-                                    # },
-                                    config={"scrollZoom": True, "displayModeBar": True,
-                                            "modeBarButtonsToRemove":['toggleSpikelines','hoverCompareCartesian'],
-                                    },
-                                ),
-                                build_graph_title("Resilience curve"),
-                                dcc.Graph(id="recovery",
-                                    # figure={
-                                    #     "layout": {
-                                    #         'height': '32vh',
-                                    #         "paper_bgcolor": "#192444",
-                                    #         "plot_bgcolor": "#192444",
-                                    #         # 'mode': 'markers+lines',
-                                    #         'shapes':{
-                                    #             'type':'line',
-                                    #             'y0': 20, 'y1': 0,
-                                    #             # 'xref': 'x0',
-                                    #             'x0': 5, 'x1': 5,
-                                    #         }
-                                    #     }
-                                    # },
-                                    config={"scrollZoom": True, "displayModeBar": True,
-                                            "modeBarButtonsToRemove":['toggleSpikelines','hoverCompareCartesian'],
-                                    },
-                                ),
-                            ],
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        html.Div(
-            id="footer-row",
-            children=[
-                html.P(
-                    id="footer-text",
-                    children=dcc.Markdown('''
-                        Thank you to the developers of [Dash and Plotly]
-                        (https://plotly.com/dash/), whose work made this app possible.
-                        '''
-                    ),
-                )
-            ]
-        )
-    ]
-)
-
 
 # Update access map
 @app.callback(
@@ -588,5 +642,5 @@ def update_recovery(
 
 # Running the server
 if __name__ == "__main__":
-    # app.run_server(debug=True, port=8050)
-   app.run_server(port=9005)
+    app.run_server(debug=True, port=8050)
+   # app.run_server(port=9005)
